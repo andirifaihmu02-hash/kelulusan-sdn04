@@ -610,6 +610,41 @@
   }
   @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
   @keyframes starSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes twinkle {
+    0%,100%{opacity:1;transform:scale(1);}
+    50%{opacity:0.15;transform:scale(0.3);}
+  }
+  @keyframes starFall {
+    0%   { transform: translateY(-30px) rotate(0deg) scale(1); opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translateY(105vh) rotate(900deg) scale(0.5); opacity: 0; }
+  }
+
+  /* ===================== CONFETTI CANVAS ===================== */
+  #confettiCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* Floating stars overlay */
+  #starOverlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 998;
+    overflow: hidden;
+  }
+  .fstar {
+    position: absolute;
+    top: -40px;
+    animation: starFall linear forwards;
+    opacity: 0;
+    user-select: none;
+  }
 
   /* Responsive */
   @media(min-width: 600px) {
@@ -624,6 +659,10 @@
 </style>
 </head>
 <body>
+
+<!-- ==================== CONFETTI + STAR OVERLAY ==================== -->
+<canvas id="confettiCanvas" style="display:none;"></canvas>
+<div id="starOverlay"></div>
 
 <!-- ==================== ADMIN LOGIN OVERLAY ==================== -->
 <div class="admin-login-overlay" id="adminOverlay" style="display:none;">
@@ -948,9 +987,9 @@ let isAnnouncementOpen = false;
 let studentsData = [];
 
 // Google Sheet CSV URL (auto-fetched on load)
-const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT_Q46ndcddG-00S-cgjcV3juQXKWpGyIeSXL_1ObX_n7QkH-9G0ly0PRaptm5QI8iid8MhCPLI5HvB/pub?gid=0&single=true&output=csv';
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT_Q46ndcddG-00S-cgjcV3juQXKWpGyIeSXL_1ObX_n7QkH-9G0ly0PRaptm5QI8iid8MhCPLI5HvB/pub?output=csv';
 
-// Fallback built-in data (from Google Sheet, loaded at build time)
+// Fallback built-in data (dari Google Sheet — NISN 10 digit dengan leading zero)
 let defaultData = [
   { nisn: '3137457961', nama: 'ADHE DANU SAPUTRA', status: 'LULUS', foto: '' },
   { nisn: '3137938356', nama: 'AISYA NUR FATIHA', status: 'LULUS', foto: '' },
@@ -959,7 +998,7 @@ let defaultData = [
   { nisn: '3133758022', nama: 'ARDIYANTO', status: 'LULUS', foto: '' },
   { nisn: '3138210307', nama: 'ARIQ FATIH ALKAUTSAR', status: 'LULUS', foto: '' },
   { nisn: '3121380774', nama: 'AVICHA ZAHWA OCTAVIA', status: 'LULUS', foto: '' },
-  { nisn: '136647333',  nama: 'AZKA PUTRA AINNURRAHMAN', status: 'LULUS', foto: '' },
+  { nisn: '0136647333', nama: 'AZKA PUTRA AINNURRAHMAN', status: 'LULUS', foto: '' },
   { nisn: '3138647923', nama: 'DEZFA ADRIAN MARVINO', status: 'LULUS', foto: '' },
   { nisn: '3133988609', nama: 'DINDA ALESHA PRAMESWARI', status: 'LULUS', foto: '' },
   { nisn: '3134431457', nama: 'FAREL ATHARIZ CALIEF', status: 'LULUS', foto: '' },
@@ -967,13 +1006,13 @@ let defaultData = [
   { nisn: '3138345931', nama: 'GIBRAN PUTRA ANGGORO', status: 'LULUS', foto: '' },
   { nisn: '3124231950', nama: 'GILANG PRAYITNO RAMADHAN', status: 'LULUS', foto: '' },
   { nisn: '3133592322', nama: 'GILANG RAMADHAN SYAHPUTRA', status: 'LULUS', foto: '' },
-  { nisn: '138268780',  nama: 'JUNITA SEPTIANI', status: 'LULUS', foto: '' },
+  { nisn: '0138268780', nama: 'JUNITA SEPTIANI', status: 'LULUS', foto: '' },
   { nisn: '3122976509', nama: 'KEISYA PUTRI AWALIYAH', status: 'LULUS', foto: '' },
   { nisn: '3132551800', nama: 'MUHAMAD CHAIRUL SIDIK', status: 'LULUS', foto: '' },
   { nisn: '3147461904', nama: 'MUHAMAD IBNU BAWAZIR', status: 'LULUS', foto: '' },
-  { nisn: '139006164',  nama: 'MUHAMMAD IDHAM', status: 'LULUS', foto: '' },
+  { nisn: '0139006164', nama: 'MUHAMMAD IDHAM', status: 'LULUS', foto: '' },
   { nisn: '3136620937', nama: 'NADINE NUR IBRAHIM', status: 'LULUS', foto: '' },
-  { nisn: '137994294',  nama: 'NAYSILLA NURI AULIA', status: 'LULUS', foto: '' },
+  { nisn: '0137994294', nama: 'NAYSILLA NURI AULIA', status: 'LULUS', foto: '' },
   { nisn: '3137923017', nama: 'RAFLI MUHAMAD DWI SETIAWAN', status: 'LULUS', foto: '' },
   { nisn: '3138119015', nama: 'RHAISAH YASMINA FAIHA', status: 'LULUS', foto: '' },
   { nisn: '3130979479', nama: 'RIZKY MAULANA', status: 'LULUS', foto: '' },
@@ -983,22 +1022,22 @@ let defaultData = [
   { nisn: '3125479736', nama: 'SYARIFAH AALIA MALENA', status: 'LULUS', foto: '' },
   { nisn: '3124375296', nama: 'ZAHRA AYUDYA ANASTASYA', status: 'LULUS', foto: '' },
   { nisn: '3125083194', nama: 'ZAKY ALNUR QORI', status: 'LULUS', foto: '' },
-  { nisn: '136724495',  nama: 'ABDUL KHOLIK', status: 'LULUS', foto: '' },
+  { nisn: '0136724495', nama: 'ABDUL KHOLIK', status: 'LULUS', foto: '' },
   { nisn: '3133294457', nama: 'AFFAN NABIH RACHMAN', status: 'LULUS', foto: '' },
   { nisn: '3136261797', nama: 'AFIKA EVIOLINA PUTRI', status: 'LULUS', foto: '' },
   { nisn: '3131788846', nama: 'AL IBRAHIM KHAIRUNNIZAM', status: 'LULUS', foto: '' },
   { nisn: '3135663892', nama: 'AMANDA SAFIRA', status: 'LULUS', foto: '' },
   { nisn: '3136555868', nama: 'ASILLA ZAHRA', status: 'LULUS', foto: '' },
-  { nisn: '139958819',  nama: 'AUFAR HIJRI IRAWAN', status: 'LULUS', foto: '' },
+  { nisn: '0139958819', nama: 'AUFAR HIJRI IRAWAN', status: 'LULUS', foto: '' },
   { nisn: '3132659804', nama: 'DENNIS SYAHREZA', status: 'LULUS', foto: '' },
   { nisn: '3134414419', nama: 'FAJAR DAIYAN FAEYZA', status: 'LULUS', foto: '' },
   { nisn: '3133303370', nama: 'FARAH GUNAWAN', status: 'LULUS', foto: '' },
-  { nisn: '137575878',  nama: 'FAZILA ARSYA DEVENIANDRA SETIAWAN', status: 'LULUS', foto: '' },
+  { nisn: '0137575878', nama: 'FAZILA ARSYA DEVENIANDRA SETIAWAN', status: 'LULUS', foto: '' },
   { nisn: '3132293572', nama: 'FRISCHA AZZAHRA', status: 'LULUS', foto: '' },
-  { nisn: '136349457',  nama: 'GILANG RAMADHAN', status: 'LULUS', foto: '' },
+  { nisn: '0136349457', nama: 'GILANG RAMADHAN', status: 'LULUS', foto: '' },
   { nisn: '3131825528', nama: 'HANIIFAH ZAHRA APRIANI', status: 'LULUS', foto: '' },
   { nisn: '3139414401', nama: 'KAYRA ASLIKHATIL RIZKIA', status: 'LULUS', foto: '' },
-  { nisn: '136074886',  nama: 'KEIZIE SIDIK SETIAWAN', status: 'LULUS', foto: '' },
+  { nisn: '0136074886', nama: 'KEIZIE SIDIK SETIAWAN', status: 'LULUS', foto: '' },
   { nisn: '3136812588', nama: 'MELODY SALWA TABINA', status: 'LULUS', foto: '' },
   { nisn: '3139428304', nama: 'MUHAMMAD HAFIZH AL MUZHAFFAR', status: 'LULUS', foto: '' },
   { nisn: '3136358198', nama: 'MUSYAFFA IKHRAMUDDIN', status: 'LULUS', foto: '' },
@@ -1036,7 +1075,164 @@ async function fetchSheetData() {
 }
 fetchSheetData();
 
-function refreshSheetData() {
+// ===================== CELEBRATION ANIMATION =====================
+const STAR_EMOJIS = ['⭐','🌟','✨','💫','🌠','⚡','🎇','🎆','🌈','💥','🎉','🎊','🎈','🏅','🥇'];
+const CONFETTI_COLORS = [
+  '#FFD700','#FF6B6B','#4ECDC4','#45B7D1','#96CEB4',
+  '#FFEAA7','#DDA0DD','#98D8C8','#F7DC6F','#BB8FCE',
+  '#FF8C00','#00CED1','#FF1493','#7FFF00','#FF4500',
+  '#1E90FF','#FFD700','#FF69B4','#00FF7F','#FF6347'
+];
+
+let confettiRunning = false;
+let confettiAnim = null;
+let starTimers = [];
+
+function launchCelebration() {
+  stopCelebration();
+  launchConfetti();
+  launchStars();
+  // auto stop after 6 seconds
+  setTimeout(stopCelebration, 6000);
+}
+
+function stopCelebration() {
+  confettiRunning = false;
+  if (confettiAnim) { cancelAnimationFrame(confettiAnim); confettiAnim = null; }
+  const canvas = document.getElementById('confettiCanvas');
+  if (canvas) { canvas.style.display = 'none'; const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); }
+  starTimers.forEach(t => clearTimeout(t));
+  starTimers = [];
+  const overlay = document.getElementById('starOverlay');
+  if (overlay) overlay.innerHTML = '';
+}
+
+// ---- CONFETTI ----
+function launchConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  if (!canvas) return;
+  canvas.style.display = 'block';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  confettiRunning = true;
+
+  const pieces = [];
+  const shapes = ['rect','circle','triangle','star'];
+
+  for (let i = 0; i < 160; i++) {
+    const color = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+    const shape = shapes[Math.floor(Math.random() * shapes.length)];
+    pieces.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      w: Math.random() * 10 + 5,
+      h: Math.random() * 10 + 5,
+      color,
+      shape,
+      speed: Math.random() * 3 + 1.5,
+      angle: Math.random() * Math.PI * 2,
+      spin:  (Math.random() - 0.5) * 0.15,
+      drift: (Math.random() - 0.5) * 1.2,
+      opacity: 1,
+      decay: Math.random() * 0.005 + 0.003,
+    });
+  }
+
+  function drawStar(ctx, cx, cy, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a1 = (i * 4 * Math.PI / 5) - Math.PI / 2;
+      const a2 = ((i * 4 + 2) * Math.PI / 5) - Math.PI / 2;
+      if (i === 0) ctx.moveTo(cx + r * Math.cos(a1), cy + r * Math.sin(a1));
+      else ctx.lineTo(cx + r * Math.cos(a1), cy + r * Math.sin(a1));
+      ctx.lineTo(cx + (r * 0.4) * Math.cos(a2), cy + (r * 0.4) * Math.sin(a2));
+    }
+    ctx.closePath();
+  }
+
+  function tick() {
+    if (!confettiRunning) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    pieces.forEach(p => {
+      if (p.opacity <= 0) return;
+      p.y += p.speed;
+      p.x += p.drift;
+      p.angle += p.spin;
+      if (p.y > canvas.height * 0.7) p.opacity -= p.decay;
+      if (p.opacity > 0) alive = true;
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.opacity);
+      ctx.fillStyle = p.color;
+      ctx.strokeStyle = p.color;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+
+      if (p.shape === 'rect') {
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      } else if (p.shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.w/2, 0, Math.PI*2);
+        ctx.fill();
+      } else if (p.shape === 'triangle') {
+        ctx.beginPath();
+        ctx.moveTo(0, -p.h/2);
+        ctx.lineTo(p.w/2, p.h/2);
+        ctx.lineTo(-p.w/2, p.h/2);
+        ctx.closePath();
+        ctx.fill();
+      } else if (p.shape === 'star') {
+        drawStar(ctx, 0, 0, p.w/1.5);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    if (alive && confettiRunning) confettiAnim = requestAnimationFrame(tick);
+    else { canvas.style.display = 'none'; confettiRunning = false; }
+  }
+  tick();
+}
+
+// ---- FALLING STARS ----
+function launchStars() {
+  const overlay = document.getElementById('starOverlay');
+  if (!overlay) return;
+  overlay.innerHTML = '';
+
+  const totalWaves = 5;
+  for (let wave = 0; wave < totalWaves; wave++) {
+    const t = setTimeout(() => {
+      spawnStarWave(overlay, 12 + Math.floor(Math.random() * 8));
+    }, wave * 700);
+    starTimers.push(t);
+  }
+}
+
+function spawnStarWave(overlay, count) {
+  for (let i = 0; i < count; i++) {
+    const delay = Math.random() * 600;
+    const t = setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'fstar';
+      el.textContent = STAR_EMOJIS[Math.floor(Math.random() * STAR_EMOJIS.length)];
+      const size = 14 + Math.random() * 22;
+      const dur  = 2.5 + Math.random() * 2.5;
+      el.style.cssText = `
+        left: ${Math.random() * 100}%;
+        font-size: ${size}px;
+        animation-duration: ${dur}s;
+        animation-delay: 0s;
+        opacity: 1;
+      `;
+      overlay.appendChild(el);
+      setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, dur * 1000 + 200);
+    }, delay);
+    starTimers.push(t);
+  }
+}
   const indicator = document.getElementById('sheetSyncStatus');
   if (indicator) indicator.innerHTML = `<span style="color:#888;">🔄 Menyinkronkan ulang...</span>`;
   fetchSheetData();
@@ -1123,13 +1319,18 @@ function cekKelulusan() {
     content.innerHTML = `<p class="result-error">⚠ Harap masukkan NISN terlebih dahulu.</p>`;
     return;
   }
-  if (nisn.length < 10) {
+  if (nisn.length < 9) {
     card.classList.add('show','not-found');
-    content.innerHTML = `<p class="result-error">⚠ NISN harus 10 digit angka.</p>`;
+    content.innerHTML = `<p class="result-error">⚠ NISN minimal 9 digit angka.</p>`;
     return;
   }
 
-  const found = studentsData.find(s => s.nisn === nisn);
+  // Cari dengan pencocokan fleksibel: cocokkan NISN persis ATAU tanpa leading zero
+  const found = studentsData.find(s =>
+    s.nisn === nisn ||
+    s.nisn === nisn.padStart(10, '0') ||
+    s.nisn.replace(/^0+/, '') === nisn.replace(/^0+/, '')
+  );
 
   if (!found) {
     card.classList.add('show','not-found');
@@ -1144,6 +1345,8 @@ function cekKelulusan() {
 
   const isLulus = found.status === 'LULUS';
   card.classList.add('show', isLulus ? 'lulus' : 'tidak-lulus');
+
+  if (isLulus) launchCelebration();
 
   // Photo area: show image if URL available, else fallback avatar
   const fotoUrl = (found.foto || '').trim();
@@ -1270,20 +1473,22 @@ function handleFileUpload(event) {
 }
 
 function parseCSV(text) {
-  const lines = text.trim().split('\n');
+  // Normalize line endings (Windows \r\n → \n)
+  const lines = text.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   const result = [];
-  // skip header if first line contains non-numeric NISN
-  const startIdx = (lines[0] && isNaN(lines[0].split(',')[0].trim())) ? 1 : 0;
+  // Deteksi header: baris pertama mengandung huruf non-angka di kolom pertama
+  const firstNisn = lines[0].split(',')[0].trim().replace(/"/g, '');
+  const startIdx = /[a-zA-Z]/.test(firstNisn) ? 1 : 0;
   for (let i = startIdx; i < lines.length; i++) {
-    // Handle quoted fields (URLs may contain commas via query params)
+    if (!lines[i].trim()) continue;
     const parts = splitCSVLine(lines[i]);
     if (parts.length >= 3) {
-      result.push({
-        nisn:   parts[0].trim().replace(/"/g,''),
-        nama:   parts[1].trim().replace(/"/g,''),
-        status: parts[2].trim().replace(/"/g,'').toUpperCase(),
-        foto:   parts[3] ? parts[3].trim().replace(/"/g,'') : '',
-      });
+      // Simpan NISN sebagai string murni — jangan ubah ke angka agar leading zero terjaga
+      const nisn   = parts[0].trim().replace(/"/g, '');
+      const nama   = parts[1].trim().replace(/"/g, '');
+      const status = parts[2].trim().replace(/"/g, '').toUpperCase();
+      const foto   = parts[3] ? parts[3].trim().replace(/"/g, '') : '';
+      if (nisn) result.push({ nisn, nama, status, foto });
     }
   }
   return result;
